@@ -1,0 +1,81 @@
+96d95
+<     External (_SB_.PC00.CNVW.EFUN.CRFI, UnknownObj)
+205d203
+<     External (_SB_.PC00.RP01.PXSX.EFUN.CRFI, UnknownObj)
+246d243
+<     External (_SB_.PC00.RP02.PXSX.EFUN.CRFI, UnknownObj)
+287d283
+<     External (_SB_.PC00.RP03.PXSX.EFUN.CRFI, UnknownObj)
+328d323
+<     External (_SB_.PC00.RP04.PXSX.EFUN.CRFI, UnknownObj)
+370d364
+<     External (_SB_.PC00.RP05.PXSX.EFUN.CRFI, UnknownObj)
+411d404
+<     External (_SB_.PC00.RP06.PXSX.EFUN.CRFI, UnknownObj)
+452d444
+<     External (_SB_.PC00.RP07.PXSX.EFUN.CRFI, UnknownObj)
+499d490
+<     External (_SB_.PC00.RP08.PXSX.EFUN.CRFI, UnknownObj)
+541d531
+<     External (_SB_.PC00.RP09.PXSX.EFUN.CRFI, UnknownObj)
+584d573
+<     External (_SB_.PC00.RP10.PXSX.EFUN.CRFI, UnknownObj)
+627d615
+<     External (_SB_.PC00.RP11.PXSX.EFUN.CRFI, UnknownObj)
+710d697
+<     External (_SB_.PC00.RP12.PXSX.EFUN.CRFI, UnknownObj)
+1007,1008d993
+<     External (_SB_.PC00.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
+<     External (_SB_.PC00.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
+1335,1336d1319
+<     External (_SB_.PC02.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
+<     External (_SB_.PC02.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
+12273d12255
+<                         PS0X ()
+12288d12269
+<                         PS3X ()
+18162d18142
+<                         PS0X ()
+18177d18156
+<                         PS3X ()
+86127,86166d86105
+<                 }
+<             }
+< 
+<             Device (NFC0)
+<             {
+<                 Name (_ADR, Zero)  // _ADR: Address
+<                 Name (_HID, "NTAG0001")  // _HID: Hardware ID
+<                 Name (SBFU, ResourceTemplate ()
+<                 {
+<                     I2cSerialBusV2 (0x0057, ControllerInitiated, 0x00061A80,
+<                         AddressingMode7Bit, "\\_SB.PC00.I2C1",
+<                         0x00, ResourceConsumer, , Exclusive,
+<                         )
+<                 })
+<                 Name (SBGF, ResourceTemplate ()
+<                 {
+<                     GpioInt (Edge, ActiveHigh, Exclusive, PullDefault, 0x0000,
+<                         "\\_SB.GPI0", 0x00, ResourceConsumer, ,
+<                         )
+<                         {   // Pin list
+<                             0x0000
+<                         }
+<                 })
+<                 CreateWordField (SBGF, 0x17, INT1)
+<                 INT1 = GNUM (0x0014080A)
+<                 Method (_STA, 0, NotSerialized)  // _STA: Status
+<                 {
+<                     If (((TPDT == One) || (TPDT == 0x02)))
+<                     {
+<                         Return (0x0F)
+<                     }
+<                     Else
+<                     {
+<                         Return (Zero)
+<                     }
+<                 }
+< 
+<                 Method (_CRS, 0, NotSerialized)  // _CRS: Current Resource Settings
+<                 {
+<                     Return (ConcatenateResTemplate (SBFU, SBGF))
