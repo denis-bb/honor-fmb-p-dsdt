@@ -3,6 +3,29 @@
 This patch fix issue in DSDT table in BIOS version 1.13 (release date 05/08/2025)
 It remove unnecesary bad NFC device record.
 
+## Touchscreen (global version)
+
+With the stock tables the touchscreen (FocalTech `FTSC1000`, `\_SB.PC00.I2C2.TPL1`)
+never answers (`i2c_hid_acpi i2c-FTSC1000:00: nothing at this address: -121`).
+Its power resource `PTPL` (power enable + reset GPIO) is defined in an SSDT under
+`\_SB.PC00.I2C5`, where no touchscreen exists, so nothing powers the controller and
+Linux turns the unused power resource off.
+
+`dsdt.global.aml` gives `TPL1` a `_PR0`/`_PR3` pointing at `\_SB.PC00.I2C5.PTPL` and a
+`_PS0` that waits for the controller to boot. The chinese version has the same `TPL1`
+layout and probably needs the same change, but it is untested and not patched yet.
+
+Once powered, the touchscreen also exposes a bogus keyboard interface
+(`FTSC1000:00 2808:5662 UNKNOWN`) that sends phantom key presses (mic LED flicker,
+stray hotkeys). Inhibit it with a udev rule, for example
+`/etc/udev/rules.d/99-honor-touchscreen-keyboard.rules`:
+
+```
+SUBSYSTEM=="input", KERNEL=="input*", ATTR{name}=="FTSC1000:00 2808:5662 UNKNOWN", ATTR{inhibited}="1"
+```
+
+Apply it with `sudo udevadm control --reload-rules && sudo udevadm trigger --action=change --subsystem-match=input`, or reboot.
+
 ## Different version of BIOS for chinese and global version
 
 There are at least two version of BIOS of this notebook was found. 
@@ -15,6 +38,13 @@ It's has same DSDT code and bugs but some ACPI tables was moved may be due to tr
 2. Add `acpi /dsdt.aml` to the end of `/etc/grub.d/40_custom`
 3. Execute `update-grub`
 4. Reboot
+
+### With mkinitcpio instead of GRUB (Arch, CachyOS, ...)
+
+1. Copy `dsdt.*.aml` for your version to `/etc/initcpio/acpi_override/dsdt.aml`
+2. Add `acpi_override` to `HOOKS` in `/etc/mkinitcpio.conf`, before `autodetect`
+3. Rebuild the initramfs: `mkinitcpio -P` (`limine-mkinitcpio` on Limine setups)
+4. Reboot. `dmesg | grep 'Table Upgrade'` should show the DSDT override
 
 ## How to run installer in some distros
 

@@ -18,7 +18,7 @@
  *     Compiler ID      "ACPI"
  *     Compiler Version 0x00040000 (262144)
  */
-DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000b)
+DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000c)
 {
     /*
      * iASL Warning: There were 52 external control methods found during
@@ -41,6 +41,8 @@ DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000b)
      * required for each:
      */
     External (_GPE.AL6B, MethodObj)    // 0 Arguments
+    External (_SB_.PC00.I2C5.ONTM, IntObj)
+    External (_SB_.PC00.I2C5.PTPL, PowerResObj)
     External (_GPE.AL6F, MethodObj)    // 0 Arguments
     External (_GPE.DTIN, MethodObj)    // 0 Arguments
     External (_GPE.PL6B, MethodObj)    // 0 Arguments
@@ -86260,6 +86262,53 @@ DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000b)
                     }
 
                     Return (ConcatenateResTemplate (I2CM (I2CX, BADR, SPED), SBFI))
+                }
+
+                /* Touchscreen power fix: the firmware's touch panel power
+                 * resource (power enable T1PE + reset T1PR) sits under I2C5,
+                 * but the touchscreen is here on I2C2. Without it nothing
+                 * powers the controller, and Linux switches the orphaned
+                 * resource off as unused. */
+                Method (_PR0, 0, NotSerialized)  // _PR0: Power Resources for D0
+                {
+                    If ((_STA () == 0x0F))
+                    {
+                        Return (Package (0x01)
+                        {
+                            \_SB.PC00.I2C5.PTPL
+                        })
+                    }
+
+                    Return (Package (0x00){})
+                }
+
+                Method (_PR3, 0, NotSerialized)  // _PR3: Power Resources for D3hot
+                {
+                    Return (_PR0 ())
+                }
+
+                /* Let the controller boot after PTPL released reset, as the
+                 * firmware does for its touch panels (at least 300 ms). */
+                Method (_PS0, 0, Serialized)  // _PS0: Power State 0
+                {
+                    Local1 = (IC1D + VRRD)
+                    If ((Local1 < 0x012C))
+                    {
+                        Local1 = 0x012C
+                    }
+
+                    If ((\_SB.PC00.I2C5.ONTM != Zero))
+                    {
+                        Local0 = ((Timer - \_SB.PC00.I2C5.ONTM) / 0x2710)
+                        If ((Local0 < Local1))
+                        {
+                            Sleep ((Local1 - Local0))
+                        }
+                    }
+                }
+
+                Method (_PS3, 0, NotSerialized)  // _PS3: Power State 3
+                {
                 }
             }
 

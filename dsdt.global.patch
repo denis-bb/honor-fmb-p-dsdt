@@ -1,48 +1,51 @@
 21c21
 < DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x00000002)
 ---
-> DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000b)
-96d95
+> DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x0000000c)
+43a44,45
+>     External (_SB_.PC00.I2C5.ONTM, IntObj)
+>     External (_SB_.PC00.I2C5.PTPL, PowerResObj)
+96d97
 <     External (_SB_.PC00.CNVW.EFUN.CRFI, UnknownObj)
-205d203
+205d205
 <     External (_SB_.PC00.RP01.PXSX.EFUN.CRFI, UnknownObj)
-246d243
+246d245
 <     External (_SB_.PC00.RP02.PXSX.EFUN.CRFI, UnknownObj)
-287d283
+287d285
 <     External (_SB_.PC00.RP03.PXSX.EFUN.CRFI, UnknownObj)
-328d323
+328d325
 <     External (_SB_.PC00.RP04.PXSX.EFUN.CRFI, UnknownObj)
-370d364
+370d366
 <     External (_SB_.PC00.RP05.PXSX.EFUN.CRFI, UnknownObj)
-411d404
+411d406
 <     External (_SB_.PC00.RP06.PXSX.EFUN.CRFI, UnknownObj)
-452d444
+452d446
 <     External (_SB_.PC00.RP07.PXSX.EFUN.CRFI, UnknownObj)
-499d490
+499d492
 <     External (_SB_.PC00.RP08.PXSX.EFUN.CRFI, UnknownObj)
-541d531
+541d533
 <     External (_SB_.PC00.RP09.PXSX.EFUN.CRFI, UnknownObj)
-584d573
+584d575
 <     External (_SB_.PC00.RP10.PXSX.EFUN.CRFI, UnknownObj)
-627d615
+627d617
 <     External (_SB_.PC00.RP11.PXSX.EFUN.CRFI, UnknownObj)
-710d697
+710d699
 <     External (_SB_.PC00.RP12.PXSX.EFUN.CRFI, UnknownObj)
-1007,1008d993
+1007,1008d995
 <     External (_SB_.PC00.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
 <     External (_SB_.PC00.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
-1335,1336d1319
+1335,1336d1321
 <     External (_SB_.PC02.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
 <     External (_SB_.PC02.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
-12273d12255
+12273d12257
 <                         PS0X ()
-12288d12269
+12288d12271
 <                         PS3X ()
-18162d18142
+18162d18144
 <                         PS0X ()
-18177d18156
+18177d18158
 <                         PS3X ()
-86130,86168d86108
+86130,86168d86110
 <             Device (NFC0)
 <             {
 <                 Name (_ADR, Zero)  // _ADR: Address
@@ -82,3 +85,51 @@
 <                     Return (ConcatenateResTemplate (SBFU, SBGF))
 <                 }
 <             }
+86322a86265,86311
+>                 }
+> 
+>                 /* Touchscreen power fix: the firmware's touch panel power
+>                  * resource (power enable T1PE + reset T1PR) sits under I2C5,
+>                  * but the touchscreen is here on I2C2. Without it nothing
+>                  * powers the controller, and Linux switches the orphaned
+>                  * resource off as unused. */
+>                 Method (_PR0, 0, NotSerialized)  // _PR0: Power Resources for D0
+>                 {
+>                     If ((_STA () == 0x0F))
+>                     {
+>                         Return (Package (0x01)
+>                         {
+>                             \_SB.PC00.I2C5.PTPL
+>                         })
+>                     }
+> 
+>                     Return (Package (0x00){})
+>                 }
+> 
+>                 Method (_PR3, 0, NotSerialized)  // _PR3: Power Resources for D3hot
+>                 {
+>                     Return (_PR0 ())
+>                 }
+> 
+>                 /* Let the controller boot after PTPL released reset, as the
+>                  * firmware does for its touch panels (at least 300 ms). */
+>                 Method (_PS0, 0, Serialized)  // _PS0: Power State 0
+>                 {
+>                     Local1 = (IC1D + VRRD)
+>                     If ((Local1 < 0x012C))
+>                     {
+>                         Local1 = 0x012C
+>                     }
+> 
+>                     If ((\_SB.PC00.I2C5.ONTM != Zero))
+>                     {
+>                         Local0 = ((Timer - \_SB.PC00.I2C5.ONTM) / 0x2710)
+>                         If ((Local0 < Local1))
+>                         {
+>                             Sleep ((Local1 - Local0))
+>                         }
+>                     }
+>                 }
+> 
+>                 Method (_PS3, 0, NotSerialized)  // _PS3: Power State 3
+>                 {
